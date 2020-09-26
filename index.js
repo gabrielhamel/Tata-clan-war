@@ -10,6 +10,7 @@ const targets = JSON.parse(getenv('TARGET_ROLE'));
 const message = getenv('MESSAGE');
 const command = getenv('COMMAND');
 const authorizedRoles = JSON.parse(getenv('AUTHORIZED_ROLE'));
+const timeout = getenv('TIMEOUT_MILLIS');
 
 bot.on('message', async obj => {
     if (!obj.guild) {
@@ -27,12 +28,27 @@ bot.on('message', async obj => {
 
     obj.react('✅');
 
-    targets.forEach(target =>
-        obj.guild.roles.fetch(target)
-        .then(role =>
-            role.members.forEach(member => member.send(message)
-        )
-    ));
+    let targetMembers = {};
+    for (let target of targets) {
+        try {
+            const role = await obj.guild.roles.fetch(target);
+            const members = role.members;
+            members.forEach((obj, key) => {
+                if (obj.user.bot !== true) {
+                    targetMembers[key] = obj;
+                }
+            });
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    Object.keys(targetMembers).forEach((key, i) => {
+        setTimeout(() => {
+            targetMembers[key].send(message)
+            .catch(err => console.log(err));
+        }, i * timeout);
+    });
 });
 
 bot.login(getenv('CLIENT_ID'));
